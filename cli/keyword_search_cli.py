@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import argparse, json
+import argparse, json, string
 
 
 def main() -> None:
@@ -21,7 +21,7 @@ def main() -> None:
                 return
             max_iterations = 5
             if len(matching_movies) < 5:
-                max = len(matching_movies)
+                max_iterations = len(matching_movies)
             for i in range(0, max_iterations):
                 print(f"{i+1}. {matching_movies[i]["title"]} {i+1}")  # 1. Movie Title 1
         case _:
@@ -39,7 +39,7 @@ def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
     with open(file_address, "r") as f:
         movie_list = json.load(f)["movies"]
         for movie in movie_list:
-            if movie_title.lower() in movie["title"].lower():
+            if filter_text(movie_title) in filter_text(movie["title"]):
                 matching_movies.append(movie)
 
     if not matching_movies:
@@ -48,6 +48,15 @@ def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
 
     matching_movies.sort(key=lambda x: x["id"])
     return matching_movies
+
+
+def filter_text(text: str) -> str:
+    text = text.lower()
+    # get all punctuation strings and
+
+    translate_table = str.maketrans("", "", string.punctuation)
+    filtered_text = text.translate(translate_table)
+    return filtered_text
 
 
 if __name__ == "__main__":
