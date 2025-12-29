@@ -11,3 +11,6 @@ wheels/
 
 #datafiles
 data/
+
+#configuration
+.vscode/
