@@ -39,7 +39,11 @@ def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
     with open(file_address, "r") as f:
         movie_list = json.load(f)["movies"]
         for movie in movie_list:
-            if filter_text(movie_title) in filter_text(movie["title"]):
+            # we check to see if at least one token from the tokenized user query matches at least one token from
+            # the tokenized movie title
+            if has_matching_tokens(
+                tokenize_text(movie_title), tokenize_text(movie["title"])
+            ):
                 matching_movies.append(movie)
 
     if not matching_movies:
@@ -53,10 +57,23 @@ def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
 def filter_text(text: str) -> str:
     text = text.lower()
     # get all punctuation strings and
-
     translate_table = str.maketrans("", "", string.punctuation)
     filtered_text = text.translate(translate_table)
     return filtered_text
+
+
+def tokenize_text(text: str) -> list[str]:
+    filtered_text = filter_text(text)
+    return filtered_text.split(" ")
+
+
+def has_matching_tokens(query_tokens: list[str], title_tokens: list[str]) -> bool:
+    is_match = False
+    for query_token in query_tokens:
+        for title_token in title_tokens:
+            if query_token in title_token:
+                return True
+    return False
 
 
 if __name__ == "__main__":
