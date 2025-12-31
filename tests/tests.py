@@ -1,6 +1,6 @@
 import unittest, os
 from dotenv import load_dotenv
-from cli.keyword_search_cli import (
+from cli.text_utils import (
     remove_punctuation,
     tokenize_text,
     remove_stopwords,
@@ -30,7 +30,7 @@ class Test_Filter_Text(unittest.TestCase):
         stopword_list = load_stop_words(stopwords_url)
         input_a = "The Matrix is a great movie!"
         expected_output_a = "matrix great movie"
-        result = remove_stopwords(input_a)
+        result = remove_stopwords(input_a, stopword_list)
         self.assertEqual(expected_output_a, result)
 
 

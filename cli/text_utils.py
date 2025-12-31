@@ -1,0 +1,112 @@
+from nltk.stem import PorterStemmer
+import argparse, json, string, os
+from pathlib import Path
+from typing import TypedDict
+
+
+class Movie(TypedDict):
+    id: int
+    title: str
+    description: str
+
+
+def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
+    stopwords_url = os.getenv("STOP_WORD_PATH")
+    movie_list_url = os.getenv("MOVIE_LIST_PATH")
+
+    if not movie_list_url:
+        raise ValueError("MOVIE_LIST_PATH environment variable is not set")
+
+    if not stopwords_url:
+        raise ValueError("STOP_WORD_PATH environment variable is not set")
+
+    # check if file exists
+    if not Path(file_address).exists():
+        print(f"broken file path: {file_address}")
+        return []
+
+    movie_title = parsed_args.query
+    matching_movies = []
+
+    stopwords_list = load_stop_words(stopwords_url)
+    title_without_stopwords = remove_stopwords(movie_title, stopwords_list)
+    stemmed_title = generate_stem_word(title_without_stopwords)
+
+    movie_list = load_movie_list(movie_list_url)
+    if not movie_list:
+        raise ValueError("STOP_WORD_PATH environment variable is not set")
+
+    for movie in movie_list:
+        # we check to see if at least one token from the tokenized user query matches at least one token from
+        # the tokenized movie title
+        if has_matching_tokens(
+            tokenize_text(stemmed_title), tokenize_text(movie["title"])
+        ):
+            matching_movies.append(movie)
+
+    if not matching_movies:
+        print(f"no movies match the title: {movie_title}")
+        return []
+
+    matching_movies.sort(key=lambda x: int(x["id"]))
+    return matching_movies
+
+
+def remove_punctuation(text: str) -> str:
+    text = text.lower()
+    # get all punctuation strings and remove them from text
+    translate_table = str.maketrans("", "", string.punctuation)
+    filtered_text = text.translate(translate_table)
+    return filtered_text
+
+
+def tokenize_text(text: str) -> list[str]:
+    filtered_text = remove_punctuation(text)
+    return filtered_text.split(" ")
+
+
+def has_matching_tokens(query_tokens: list[str], title_tokens: list[str]) -> bool:
+    is_match = False
+    for query_token in query_tokens:
+        for title_token in title_tokens:
+            if query_token in title_token:
+                return True
+    return False
+
+
+def remove_stopwords(text: str, stopwords_list: list[str]) -> str:
+    text_without_punctuation = remove_punctuation(text)
+    word_list = text_without_punctuation.split(" ")
+    stopwords_set = {stopword.strip() for stopword in stopwords_list}
+    filtered_text = [word for word in word_list if word not in stopwords_set]
+    return " ".join(filtered_text)
+
+
+def load_stop_words(file_address: str) -> list[str]:
+    if not Path(file_address).exists():
+        print(f"broken file path: {file_address}")
+        return []
+    with open(file_address, "r") as f:
+        return f.read().split("\n")
+
+
+def generate_stem_word(word) -> str:
+    stemmer = PorterStemmer()
+    return stemmer.stem(word)
+
+
+def load_movie_list(file_url: str) -> list[Movie]:
+    with open(file_url, "r") as f:
+        movie_list = json.load(f)["movies"]
+
+    if movie_list:
+        return movie_list
+
+    return []
+
+
+def create_file(file_path: str) -> str:
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch(exist_ok=True)
+    return file_path
