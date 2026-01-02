@@ -1,7 +1,10 @@
 from nltk.stem import PorterStemmer
-import argparse, json, string, os
+import argparse, json, string, os, logging, pickle
 from pathlib import Path
 from typing import TypedDict
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 
 class Movie(TypedDict):
@@ -53,11 +56,10 @@ def match_movies(file_address: str, parsed_args: argparse.Namespace) -> list:
 
 
 def remove_punctuation(text: str) -> str:
-    text = text.lower()
     # get all punctuation strings and remove them from text
+    text = text.lower()
     translate_table = str.maketrans("", "", string.punctuation)
-    filtered_text = text.translate(translate_table)
-    return filtered_text
+    return text.translate(translate_table)
 
 
 def tokenize_text(text: str) -> list[str]:
@@ -110,3 +112,103 @@ def create_file(file_path: str) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.touch(exist_ok=True)
     return file_path
+
+
+def query_matches_index(query: str, inverted_index: InvertedIndex) -> list:
+    # should return a list of Movie Objects
+    # return 5 items from the document
+    matching_documents = []
+    seen_ids = set()
+
+    processed_token_list = process_token(query)
+
+    for token in processed_token_list:
+        if token in inverted_index.index:
+            matching_documents_index_list = inverted_index.get_documents(token)
+            for index in matching_documents_index_list:
+                if index not in seen_ids:
+                    matching_documents.append(inverted_index.docmap[index])
+                    seen_ids.add(index)
+                    if len(matching_documents) == 5:
+                        return matching_documents
+    print("no matches found")
+    return matching_documents
+
+
+def process_token(query: str) -> list[str]:
+    stopwords_url = os.getenv("STOP_WORD_PATH")
+    movie_list_url = os.getenv("MOVIE_LIST_PATH")
+    if not movie_list_url:
+        raise ValueError("MOVIE_LIST_PATH environment variable is not set")
+    if not stopwords_url:
+        raise ValueError("STOP_WORD_PATH environment variable is not set")
+
+    processed_token = []
+    tokenized_query = tokenize_text(query)
+
+    for token in tokenized_query:
+        token_without_punctuation = remove_punctuation(token)
+        stemmed_token = generate_stem_word(token_without_punctuation)
+        processed_token.append(stemmed_token)
+
+    return processed_token
+
+
+class InvertedIndex:
+    def __init__(self) -> None:
+        load_dotenv()
+        self.index: dict[str, set[int]] = {}
+        self.docmap: dict[int, Movie] = {}
+        self.index_path: str | None = os.getenv("INDEX_PATH")
+        self.docmap_path: str | None = os.getenv("DOC_MAP_PATH")
+
+    def __add_documents(self, doc_id: int, text: str) -> None:
+        tokenized_text = process_token(text)
+        for token in set(tokenized_text):
+            if token not in self.index:
+                self.index[token] = set()
+            self.index[token].add(doc_id)
+
+    def get_documents(self, term: str) -> list[int]:
+        # get set of document IDs for a given token from the index.
+        doc_ids = self.index.get(term, set())
+        return sorted(list(doc_ids))
+
+    def build(self) -> None:
+        movie_list_url = os.getenv("MOVIE_LIST_PATH")
+        if not movie_list_url:
+            logger.error("unable to fetch path to movie dataset")
+            return
+        movie_list = load_movie_list(movie_list_url)
+        for movie in movie_list:
+            # should iterate over all of the movies and add them to doc map and index
+            # add movie object to docmap
+            self.docmap[movie["id"]] = movie
+            input = f"{movie['title']} {movie['description']}"
+            self.__add_documents(int(movie["id"]), input)
+
+    def save(self) -> None:
+        # create file_directory to store
+        if not self.index_path or not self.docmap_path:
+            logger.error("could not load file path(s) to documents")
+            return
+
+        index_file_path = create_file(self.index_path)
+        doc_map_file_path = create_file(self.docmap_path)
+
+        # save the values in self.index and self.docmap
+        with open(index_file_path, "wb") as f:
+            pickle.dump(self.index, f)
+
+        with open(doc_map_file_path, "wb") as f:
+            pickle.dump(self.docmap, f)
+
+    def load(self) -> None:
+        if not self.index_path or not self.docmap_path:
+            raise Exception("problem with document file path")
+
+        with open(self.index_path, "rb") as f:
+            self.index = pickle.load(f)
+
+        with open(self.docmap_path, "rb") as f:
+            self.docmap = pickle.load(f)
