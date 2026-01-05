@@ -11,11 +11,18 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
+    term_frequency_parser = subparsers.add_parser(
+        "tf", help="get frequency for term within the document of the ID provided"
+    )
     build_parser = subparsers.add_parser(
         "build", help="Build and save inverted index to disc"
     )
 
     search_parser.add_argument("query", type=str, help="Search query")
+    term_frequency_parser.add_argument("id", type=int, help="Document ID to query")
+    term_frequency_parser.add_argument(
+        "term", type=str, help="Word to find frequency for"
+    )
     # build_parser.add_argument("query", type=str, help="")
 
     args = parser.parse_args()
@@ -25,6 +32,8 @@ def main() -> None:
             handler_search_comand(args)
         case "build":
             handler_build_command()
+        case "tf":
+            handler_term_frequency(args)
         case _:
             parser.print_help()
 

@@ -19,3 +19,17 @@ def handler_build_command():
     idx = InvertedIndex()
     idx.build()
     idx.save()
+
+
+def handler_term_frequency(args: argparse.Namespace):
+    (
+        doc_id,
+        term,
+    ) = (
+        args.id,
+        args.term,
+    )
+    idx = InvertedIndex()
+    idx.load()
+    term_frequency = idx.get_tf(doc_id, term)
+    print(f"the term ({term}) appears {term_frequency} times")

@@ -3,6 +3,7 @@ import argparse, json, string, os, logging, pickle
 from pathlib import Path
 from typing import TypedDict
 from dotenv import load_dotenv
+from collections import Counter, defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -147,10 +148,8 @@ def process_token(query: str) -> list[str]:
     tokenized_query = tokenize_text(query)
 
     for token in tokenized_query:
-        token_without_punctuation = remove_punctuation(token)
-        stemmed_token = generate_stem_word(token_without_punctuation)
+        stemmed_token = generate_stem_word(token)
         processed_token.append(stemmed_token)
-
     return processed_token
 
 
@@ -159,15 +158,22 @@ class InvertedIndex:
         load_dotenv()
         self.index: dict[str, set[int]] = {}
         self.docmap: dict[int, Movie] = {}
+        self.term_frequencies: dict[int, Counter] = defaultdict(Counter)
         self.index_path: str | None = os.getenv("INDEX_PATH")
         self.docmap_path: str | None = os.getenv("DOC_MAP_PATH")
+        self.term_frequency_path: str | None = os.getenv("TERM_FREQUENCY_PATH")
 
     def __add_documents(self, doc_id: int, text: str) -> None:
-        tokenized_text = process_token(text)
-        for token in set(tokenized_text):
+        processed_text = process_token(text)
+        for token in set(processed_text):
             if token not in self.index:
                 self.index[token] = set()
-            self.index[token].add(doc_id)
+            self.index[token].add(doc_id)  # e.g -> {cat : set(3 ,8, 61)}
+        # for each token, update its term frequency
+        if doc_id not in self.term_frequencies:
+            self.term_frequencies[doc_id] = Counter()
+        for token in processed_text:
+            self.term_frequencies[doc_id].update([token])
 
     def get_documents(self, term: str) -> list[int]:
         # get set of document IDs for a given token from the index.
@@ -175,6 +181,7 @@ class InvertedIndex:
         return sorted(list(doc_ids))
 
     def build(self) -> None:
+        # build expects to work on a JSON
         movie_list_url = os.getenv("MOVIE_LIST_PATH")
         if not movie_list_url:
             logger.error("unable to fetch path to movie dataset")
@@ -189,12 +196,14 @@ class InvertedIndex:
 
     def save(self) -> None:
         # create file_directory to store
-        if not self.index_path or not self.docmap_path:
+        if not self.index_path or not self.docmap_path or not self.term_frequency_path:
             logger.error("could not load file path(s) to documents")
             return
 
         index_file_path = create_file(self.index_path)
         doc_map_file_path = create_file(self.docmap_path)
+
+        term_freq_file_path = create_file(self.term_frequency_path)
 
         # save the values in self.index and self.docmap
         with open(index_file_path, "wb") as f:
@@ -203,8 +212,25 @@ class InvertedIndex:
         with open(doc_map_file_path, "wb") as f:
             pickle.dump(self.docmap, f)
 
+        ##------ save the term frequency attribute to disk -----##
+        if not self.term_frequencies:
+            return
+        with open(term_freq_file_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
+
+    def get_tf(self, doc_id: int, term: str) -> int:
+        processed_term = process_token(term)
+        if len(processed_term) > 1:
+            raise Exception("term contains more than one token")
+        token = processed_term[0]
+        if doc_id not in self.term_frequencies:
+            logger.error(f"no document with id:{doc_id} in dataset")
+            return 0
+
+        return self.term_frequencies[doc_id][token]
+
     def load(self) -> None:
-        if not self.index_path or not self.docmap_path:
+        if not self.index_path or not self.docmap_path or not self.term_frequency_path:
             raise Exception("problem with document file path")
 
         with open(self.index_path, "rb") as f:
@@ -212,3 +238,6 @@ class InvertedIndex:
 
         with open(self.docmap_path, "rb") as f:
             self.docmap = pickle.load(f)
+
+        with open(self.term_frequency_path, "rb") as f:
+            self.term_frequencies = pickle.load(f)
