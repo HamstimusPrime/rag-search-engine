@@ -1,5 +1,10 @@
 import pytest
-from cli.filter_text import remove_punctuation_from_text, is_keyword_in_text
+from cli.load_data_set import load_stopwords
+from cli.filter_text import (
+    remove_punctuation_from_text,
+    is_keyword_in_text,
+    filter_stopwords,
+)
 
 
 @pytest.mark.parametrize(
@@ -22,3 +27,11 @@ def test_remove_punctuation(a, expected):
 )
 def test_is_keyword_in_text(a, b, expected):
     assert is_keyword_in_text(a, b) == expected
+
+
+@pytest.mark.parametrize(
+    "keywords,expected",
+    [(["a", "magic", "charlie"], ["magic", "charlie"])],
+)
+def test_filter_stopwords(keywords, expected):
+    assert filter_stopwords(keywords) == expected

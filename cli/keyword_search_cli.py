@@ -1,9 +1,8 @@
 import argparse
 from search_keyword import search_keyword_in_dataset
-from load_data_set import load_data_set
+from load_data_set import load_data_set, load_stopwords
 from dotenv import load_dotenv
-from pathlib import Path
-import os
+
 
 """
 This module's job is to parse arguments from the command line. For example, using the command:
@@ -22,13 +21,7 @@ def main() -> None:
     search_parser.add_argument("query", type=str, help="Search query")
     args = parser.parse_args()
 
-    base_file_path = Path(__file__).parent.parent
-    data_set_filePath = os.getenv("DATA_SET_URL")
-    if data_set_filePath == None:
-        print(f"error fetching address to data set")
-        return
-
-    data_set = load_data_set(data_set_filePath, base_file_path)
+    data_set = load_data_set()
     if data_set == None:
         return
 
@@ -39,6 +32,7 @@ def main() -> None:
             search_keyword_in_dataset(search_keyword, data_set)
         case _:
             parser.print_help()
+
 
 if __name__ == "__main__":
     main()

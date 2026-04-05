@@ -1,4 +1,7 @@
 .venv
 data
 .env
+design.excalidraw
+output.txt
 cli/__pycache__/
+
