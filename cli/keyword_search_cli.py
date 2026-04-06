@@ -28,25 +28,23 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-
     data_set = load_data_set()
+
     if data_set == None:
         return
 
+    inverted_index = InvertedIndex()
     match args.command:
         case "search":
             search_keyword = args.query
             print(f"Searching for: {search_keyword}")
-            search_keyword_in_dataset(search_keyword, data_set)
+            search_keyword_in_dataset(search_keyword, inverted_index)
         case "build":
-            inverted_index = InvertedIndex()
             inverted_index.build()
             inverted_index.save()
             docs = inverted_index.get_documents("merida")
             if not docs:
-                print("could not find documents containing 'merida'")
                 return
-            print(f"First document for token 'merida' = {docs[0]}")
 
         case _:
             parser.print_help()

@@ -1,6 +1,6 @@
-import pickle, os
+import pickle, os, sys
 from pathlib import Path
-from filter_text import preprocess_text
+from filter_text import preprocess_text, tokenize_text
 from load_data_set import load_data_set
 from dotenv import load_dotenv
 
@@ -21,7 +21,9 @@ class InvertedIndex:
 
     def __add_document(self, doc_id: str, text: str):
         # tokenize string
-        txt_tokens = set(text.split(" "))
+        txt_tokens = tokenize_text(text)
+        if not txt_tokens:
+            return
         for txt in txt_tokens:
             if txt not in self.index:
                 self.index[txt] = set()
@@ -33,15 +35,15 @@ class InvertedIndex:
         if not data_set:
             return
 
-        for m in data_set["movies"]:
+        for mv in data_set["movies"]:
             # --- build index using _add_document method  ---
-            text = preprocess_text(f"{m["title"]} {m["description"]}")
+            text = f"{mv["title"]} {mv["description"]}"
 
-            m_ID = m["id"]
-            self.__add_document(m_ID, text)
+            mv_ID = mv["id"]
+            self.__add_document(mv_ID, text)
 
             # --- build docmap ---
-            self.docmap[m["id"]] = m
+            self.docmap[mv["id"]] = mv
 
     def get_documents(self, term: str) -> list | None:
         if not self.index:
@@ -53,8 +55,8 @@ class InvertedIndex:
 
     def save(self):
         # this method serializes and writes to disk
-        # the data that might already exist
-        # in both the document map and the index using the pickle package
+        # the data that might already exist in both the document map and
+        # the index using the pickle package
         if (not self.index) or (not self.docmap):
             print(f"error saving files. uninitialized index or document map")
             return
@@ -66,3 +68,17 @@ class InvertedIndex:
         print(f"dumping docmap to path: {self.abs_docmap_path}...")
         with open(self.abs_docmap_path, "wb") as file:
             pickle.dump(self.docmap, file)
+
+    def load(self):
+        try:
+            # --- load docmap ---
+            with open(self.abs_docmap_path, "rb") as file:
+                self.docmap = pickle.load(file)
+
+            # --- load index ---
+            with open(self.abs_index_path, "rb") as file:
+                self.index = pickle.load(file)
+
+        except Exception as e:
+            print(f"error loading index and docmap, error: {e}")
+            sys.exit(1)

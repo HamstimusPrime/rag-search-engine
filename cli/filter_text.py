@@ -7,7 +7,7 @@ load_dotenv()
 stemmer = PorterStemmer()
 
 
-def preprocess_text(text: str):
+def preprocess_text(text: str) -> str:
     text = text.lower()
     return remove_punctuation_from_text(text)
 
@@ -37,8 +37,8 @@ def is_keyword_in_text(keyword: str, text: str) -> bool | None:
         return
 
     # removed stemmed words from both keywords and text that have stopwords removed
-    stemmed_kw = [stemmer.stem(k) for k in kw_without_stopwords]
-    stemmed_txt = [stemmer.stem(t) for t in txt_without_stopwords]
+    stemmed_kw = convert_words_to_stem(kw_without_stopwords)
+    stemmed_txt = convert_words_to_stem(txt_without_stopwords)
 
     # check if processed keywords exists within processed text
     for kw in stemmed_kw:
@@ -46,3 +46,18 @@ def is_keyword_in_text(keyword: str, text: str) -> bool | None:
             if kw in txt:
                 return True
     return False
+
+
+def convert_words_to_stem(words: list[str]):
+    return [stemmer.stem(w) for w in words]
+
+
+def tokenize_text(text: str) -> list[str] | None:
+    processed_txt = preprocess_text(text)
+    processed_words = processed_txt.split(" ")
+    words_without_stopwords = filter_stopwords(processed_words)
+    if not words_without_stopwords:
+        return
+    stemmed_words = convert_words_to_stem(words_without_stopwords)
+    filtered = [s for s in stemmed_words if s.strip()]
+    return filtered
