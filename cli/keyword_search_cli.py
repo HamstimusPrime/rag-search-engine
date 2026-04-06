@@ -2,6 +2,7 @@ import argparse
 from search_keyword import search_keyword_in_dataset
 from load_data_set import load_data_set, load_stopwords
 from dotenv import load_dotenv
+from inverted_index import InvertedIndex
 
 
 """
@@ -17,8 +18,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # --- Command: search ---
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
+
+    # --- Command: build ---
+    build_parser = subparsers.add_parser(
+        "build", help="builds inverted index and saves to disk"
+    )
+
     args = parser.parse_args()
 
     data_set = load_data_set()
@@ -30,6 +38,16 @@ def main() -> None:
             search_keyword = args.query
             print(f"Searching for: {search_keyword}")
             search_keyword_in_dataset(search_keyword, data_set)
+        case "build":
+            inverted_index = InvertedIndex()
+            inverted_index.build()
+            inverted_index.save()
+            docs = inverted_index.get_documents("merida")
+            if not docs:
+                print("could not find documents containing 'merida'")
+                return
+            print(f"First document for token 'merida' = {docs[0]}")
+
         case _:
             parser.print_help()
 

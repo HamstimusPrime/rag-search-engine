@@ -7,10 +7,13 @@ load_dotenv()
 stemmer = PorterStemmer()
 
 
+def preprocess_text(text: str):
+    text = text.lower()
+    return remove_punctuation_from_text(text)
+
+
 def remove_punctuation_from_text(text: str) -> str:
-    table = str.maketrans("", "", string.punctuation)
-    cleaned_text = text.translate(table)
-    return cleaned_text
+    return text.translate(str.maketrans("", "", string.punctuation))
 
 
 def filter_stopwords(keywords: list) -> list | None:
