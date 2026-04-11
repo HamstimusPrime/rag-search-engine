@@ -1,4 +1,5 @@
 import pytest
+from cli.search_keyword import parse_query
 from cli.load_data_set import load_stopwords
 from cli.filter_text import (
     remove_punctuation_from_text,
@@ -35,3 +36,15 @@ def test_is_keyword_in_text(a, b, expected):
 )
 def test_filter_stopwords(keywords, expected):
     assert filter_stopwords(keywords) == expected
+
+
+@pytest.mark.parametrize(
+    "query,expected",
+    [
+        ("bear AND wizard", {"queries": ["bear", "wizard"], "query_condition": "AND"}),
+        ("bear wizard", None),
+        ("bear", {"queries": ["bear"], "query_condition": None}),
+    ],
+)
+def test_parse_query(query, expected):
+    assert parse_query(query) == expected

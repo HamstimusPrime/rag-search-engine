@@ -27,6 +27,13 @@ def main() -> None:
         "build", help="builds inverted index and saves to disk"
     )
 
+    # --- Command: term frequency ---
+    tf_parser = subparsers.add_parser(
+        "tf", help="builds inverted index and saves to disk"
+    )
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term to search for")
+
     args = parser.parse_args()
     data_set = load_data_set()
 
@@ -45,6 +52,13 @@ def main() -> None:
             docs = inverted_index.get_documents("merida")
             if not docs:
                 return
+        case "tf":
+            doc_id = args.doc_id
+            search_term = args.term
+            tf = inverted_index.get_tf(doc_id, search_term)
+            print(
+                f"the term {search_term} has a frequency of {tf} in document with ID of {doc_id}"
+            )
 
         case _:
             parser.print_help()
