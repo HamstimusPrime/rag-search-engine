@@ -54,7 +54,7 @@ def convert_words_to_stem(words: list[str]):
 
 def tokenize_text(text: str) -> list[str] | None:
     processed_txt = preprocess_text(text)
-    processed_words = processed_txt.split(" ")
+    processed_words = processed_txt.split()
     words_without_stopwords = filter_stopwords(processed_words)
     if not words_without_stopwords:
         return

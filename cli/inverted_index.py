@@ -1,4 +1,4 @@
-import pickle, os, sys
+import pickle, os, sys, math
 from collections import Counter
 from pathlib import Path
 from filter_text import tokenize_text
@@ -45,13 +45,11 @@ class InvertedIndex:
 
         for mv in data_set["movies"]:
             # --- build index using _add_document method  ---
-            text = f"{mv["title"]} {mv["description"]}"
-
             mv_ID = mv["id"]
-            self.__add_document(mv_ID, text)
-
+            text = f"{mv["title"]} {mv["description"]}"
             # --- build docmap ---
             self.docmap[mv["id"]] = mv
+            self.__add_document(mv_ID, text)
 
     def get_documents(self, term: str) -> list | None:
         if not self.index:
@@ -59,7 +57,9 @@ class InvertedIndex:
             return
         # query the index dictionary and return a sorted list
         # of the document IDs that the term string appears in
-        return sorted(self.index[term])
+        docs = self.index.get(term) or None
+        if docs:
+            return sorted(docs)
 
     def get_tf(self, doc_id: int, term: str):
         # term is going to be preprocessed before it is used
@@ -116,3 +116,28 @@ class InvertedIndex:
         except Exception as e:
             print(f"error loading index and docmap, error: {e}")
             sys.exit(1)
+
+    def calculate_idf(self, term: str) -> float | None:
+        if (not self.docmap) or (not self.index):
+            self.load()
+        tokens = tokenize_text(term)
+        if not tokens:
+            # some error here
+            return
+        token = tokens[0]
+        docs_matching_token = self.get_documents(token)
+        if not docs_matching_token:
+            print(f"no docuements matching term: `{term}`")
+            return 0
+
+        total_doc_count = len(self.docmap)
+        term_match_doc_count = len(docs_matching_token)
+
+        return math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+
+    def calculate_tf_idf(self, doc_id: int, term: str):
+        if (not self.docmap) or (not self.index):
+            self.load()
+        tf = self.get_tf(doc_id, term) or 0
+        idf = self.calculate_idf(term) or 0
+        return tf * idf
